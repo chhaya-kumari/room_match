@@ -50,7 +50,7 @@ CREATE TABLE users (
 -- ------------------------------------------------------------
 
 CREATE TABLE locations (
-    location_id     INT AUTO_INCREMENT PRIMARY KEY,
+    location_id INT AUTO_INCREMENT PRIMARY KEY,
     state VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
     area VARCHAR(100) NOT NULL,
