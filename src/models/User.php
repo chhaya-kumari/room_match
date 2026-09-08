@@ -16,7 +16,16 @@ class User
     $stmt->execute([
       ':email' => $email
     ]);
+    return $stmt->fetch();
+  }
 
+  public function findByContact($contactNumber)
+  {
+    $sql = "select * from users where contact_number = :contact limit 1";
+    $stmt = $this->db->prepare($sql); //prepared statements to block sql injection attacks
+    $stmt->execute([
+      ':contact' => $contactNumber
+    ]);
     return $stmt->fetch();
   }
 
