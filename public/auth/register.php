@@ -6,7 +6,7 @@ require_once $path . '/pg_recommendation/src/models/User.php';
 require_once $path . '/pg_recommendation/src/services/AuthService.php';
 require_once $path . '/pg_recommendation/src/services/SessionManager.php';
 require_once $path . '/pg_recommendation/src/validators/InputValidator.php';
-
+require_once $path . '/pg_recommendation/src/security/Csrf.php';
 
 SessionManager::start();
 
@@ -15,12 +15,19 @@ $success = null;
 $old = [];
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-  $fullname = trim($_POST['fullname'] ?? '');
 
+  // The state-changing POST requests are protected by CSRF validation.
+  $csrfToken = $_POST['csrf_token'] ?? '';
+
+  if (!Token::verifyToken($csrfToken)) {
+    http_response_code(403);
+    exit("Invalid CSRF token");
+  }
+
+  $fullname = trim($_POST['fullname'] ?? '');
   $email = trim($_POST['email'] ?? '');
   $contact = trim($_POST['contact'] ?? '');
   $gender = $_POST['gender'] ?? '';
-
   $password = $_POST['password'] ?? '';
   $confirmPassword = $_POST['confirm_password'] ?? '';
   $role = $_POST['role'] ?? '';

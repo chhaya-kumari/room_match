@@ -9,6 +9,11 @@
 <body>
 
   <form class="register-form auth-form" action="../../public/auth/register.php" method="POST">
+    <input
+      type="hidden"
+      name="csrf_token"
+      value="<?= htmlspecialchars(Token::getToken()) ?>">
+
     <h2>Register Form</h2>
     <?php if (!empty($error)): ?>
       <div class="error-message">

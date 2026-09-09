@@ -5,6 +5,7 @@ require_once $path . '/pg_recommendation/src/models/User.php';
 require_once $path . '/pg_recommendation/src/services/AuthService.php';
 require_once $path . '/pg_recommendation/src/services/SessionManager.php';
 require_once $path . '/pg_recommendation/src/validators/InputValidator.php';
+require_once $path . '/pg_recommendation/src/security/Csrf.php';
 
 SessionManager::start();
 
@@ -16,6 +17,13 @@ if (isset($_GET['success']) && $_GET['success'] === '1') {
 $error = null;
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $csrfToken = $_POST['csrf_token'] ?? '';
+
+  if (!Token::verifyToken($csrfToken)) {
+    http_response_code(403);
+    exit("Invalid CSRF token");
+  }
+
   $email = trim($_POST['email'] ?? '');
   $password = $_POST['password'] ?? '';
 

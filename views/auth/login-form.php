@@ -9,8 +9,12 @@
 <body>
 
   <form method="POST" action="../../public/auth/login.php" class="login-form auth-form">
-    <h2>Login</h2>
+    <input
+      type="hidden"
+      name="csrf_token"
+      value="<?= htmlspecialchars(Token::getToken()) ?>">
 
+    <h2>Login</h2>
     <?php if (!empty($error)): ?>
       <div class="error-message">
         <?= htmlspecialchars($error) ?>
