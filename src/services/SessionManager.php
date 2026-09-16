@@ -11,7 +11,8 @@ class SessionManager
     }
   }
 
-  public static function login($user) {
+  public static function login($user)
+  {
     self::start();
 
     session_regenerate_id(true);
@@ -22,38 +23,60 @@ class SessionManager
     $_SESSION['role'] = $user['role'];
   }
 
-  public static function logout() {
+  public static function logout()
+  {
     self::start();
 
-    $_SESSION=[];
-    if(ini_get('session.use_cookie')) {
+    $_SESSION = [];
+    if (ini_get('session.use_cookie')) {
       $params = session_get_cookie_params();
 
       setcookie(
         session_name(),
         '',
-        time() -42000,
+        time() - 42000,
         $params['path'],
         $params['domain'],
         $params['secure'],
         $params['httponly']
       );
     }
-    session_destroy();   
+    session_destroy();
   }
 
-  public static function isAuthenticated() {
+  public static function isAuthenticated()
+  {
     self::start();
     return isset($_SESSION['user_id']);
   }
 
-  public static function userId() {
+  public static function userId()
+  {
     self::start();
     return $_SESSION['user_id'] ?? null;
   }
 
-  public static function role() {
+  public static function role()
+  {
     self::start();
     return $_SESSION['role'] ?? null;
+  }
+
+  public static function setFlash($key, $message)
+  {
+    $_SESSION['_flash'][$key] = $message;
+  }
+
+  public static function getFlash($key)
+  {
+    if (!isset($_SESSION['_flash'][$key])) {
+      return null;
+    }
+
+    $message = $_SESSION['_flash'][$key];
+
+    unset($_SESSION['_flash'][$key]);
+
+    return $message;
   }
 }
