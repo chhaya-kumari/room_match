@@ -37,4 +37,23 @@ class PG
     $pg = $stmt->fetch();
     return $pg ?: null;
   }
+
+  public function updateDetails($pgId, $ownerId, $description, $gender_preference, $rules, $notice_period_days, $lock_in_period_months)
+  {
+    $sql = "update pgs set description = :desc, gender_preference = :gender_preference, 
+    rules = :rules,notice_period_days = :notice_period_days, lock_in_period_months = :lock_in_period_months where pg_id = :pg_id and owner_id = :owner_id";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([
+      ":desc" => $description,
+      ":gender_preference" => $gender_preference,
+      ":rules" => $rules,
+      ":notice_period_days" => $notice_period_days,
+      ":lock_in_period_months" => $lock_in_period_months,
+      ":pg_id" => $pgId,
+      ":owner_id" => $ownerId
+    ]);
+
+    return $stmt->rowCount() > 0;
+  }
 }

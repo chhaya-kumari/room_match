@@ -51,8 +51,10 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         );
       }
 
+      $geoCodeService = new GeoCodeService($delhiveryConfig['base_url'], $delhiveryConfig['token']);
+
       $database = new Database();
-      $pgService = new PGService($database->conn, $delhiveryConfig['base_url'], $delhiveryConfig['token']);
+      $pgService = new PGService($database->conn);
 
       $ownerId = SessionManager::userId();
 
@@ -60,7 +62,8 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         $ownerId,
         $pgName,
         $pgAddress,
-        $locationId
+        $locationId,
+        $geoCodeService
       );
 
       SessionManager::setFlash(
@@ -70,24 +73,26 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 
 
       header(
-        'Location: /pg_recommendation/public/owner/create-pg.php'
+        'Location: /pg_recommendation/public/owner/pg-details.php?pg_id=' . $pgId
       );
 
       exit;
     } catch (InvalidArgumentException $e) {
       // safe validation errors
-      $error = $e->getMessage();
+
+      //$error = $e->getMessage();
     } catch (Throwable $e) {
-
       // technical error goes to server log
-      error_log(
-        'Create PG controller Error: ' . $e->getMessage()
-      );
-
+      // error_log(
+      //   'Create PG controller Error: ' . $e->getMessage()
+      // );
 
       // safe message for user
-
-      $error = 'Unable to create PG. Please try again.';
+      echo "<pre>";
+      print_r($e->getMessage());
+      echo "</pre>";
+      die();
+      //    $error = 'Unable to create PG. Please try again.';
     }
   }
 }

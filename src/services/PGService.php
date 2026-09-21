@@ -12,15 +12,14 @@ class PGService
   private Location $locationModel;
   private GeoCodeService $geoCodeService;
 
-  public function __construct(PDO $db, $geoCodeBaseUrl, $geoCodeToken)
+  public function __construct(PDO $db)
   {
     $this->db = $db;
     $this->pgModel = new PG($db);
     $this->locationModel = new Location($db);
-    $this->geoCodeService = new GeoCodeService($geoCodeBaseUrl, $geoCodeToken);
   }
 
-  public function createPG($ownerId, $pgName, $pgAddress, $locationId)
+  public function createPG($ownerId, $pgName, $pgAddress, $locationId, GeoCodeService $geoCodeService)
   {
     try {
       if ($ownerId <= 0) {
@@ -66,7 +65,7 @@ class PGService
       }
 
       // GeoCode PG Address
-      $coordinates = $this->geoCodeService->geocode($pgAddress);
+      $coordinates = $geoCodeService->geocode($pgAddress);
 
       $latitude = $coordinates['latitude'];
       $longitude = $coordinates['longitude'];
@@ -88,7 +87,6 @@ class PGService
     }
   }
 
-
   public function getPG($pgId)
   {
     if ($pgId <= 0) {
@@ -97,5 +95,74 @@ class PGService
       );
     }
     return $this->pgModel->findById($pgId);
+  }
+
+  public function updatePGDetails($pgId, $ownerId, $description, $gender_preference, $rules, $notice_period_days, $lock_in_period_months)
+  {
+    // Validation
+
+    if ($pgId <= 0) {
+      throw new InvalidArgumentException('Invalid Pg');
+    }
+
+    if ($ownerId <= 0) {
+      throw new InvalidArgumentException('Invalid owner');
+    }
+
+    $pg = $this->getPG($pgId);
+
+    if ($pg === null || (int)$pg['owner_id'] !== (int)$ownerId) {
+      throw new InvalidArgumentException(
+        'PG not found or you are not authorized to edit it'
+      );
+    }
+
+    $allowedGenderPreference = ['male', 'female', 'co-ed'];
+
+    if (!in_array($gender_preference, $allowedGenderPreference, true)) {
+      throw new InvalidArgumentException(
+        'Invalid gender preference.'
+      );
+    }
+
+    if ($description !== null && strlen($description) > 2000) {
+      throw new InvalidArgumentException(
+        'Description cannot exceed 2000 characters.'
+      );
+    }
+
+    if ($rules !== null && strlen($rules) > 3000) {
+      throw new InvalidArgumentException(
+        'Rules cannot exceed 3000 characters.'
+      );
+    }
+
+    if (
+      $notice_period_days !== null &&
+      $notice_period_days < 0
+    ) {
+      throw new InvalidArgumentException(
+        'Invalid notice period.'
+      );
+    }
+
+    if (
+      $lock_in_period_months !== null &&
+      $lock_in_period_months < 0
+    ) {
+      throw new InvalidArgumentException(
+        'Invalid lock-in period.'
+      );
+    }
+
+    return $this->pgModel->updateDetails(
+      $pgId,
+      $ownerId,
+      $description,
+      $gender_preference,
+      $rules,
+      $notice_period_days,
+      $lock_in_period_months
+    );
   }
 }
