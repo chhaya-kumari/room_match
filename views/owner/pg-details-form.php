@@ -9,7 +9,7 @@
 </head>
 
 <body>
-  <form method="POST" class="auth-form" action="../../public/owner/pg-details.php">
+  <form method="POST" class="pg-details-form form" action="../../public/owner/pg-details.php">
     <!-- auth_form class for just testing and basic css -->
     <input
       type="hidden"

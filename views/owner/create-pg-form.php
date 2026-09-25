@@ -8,7 +8,7 @@
 
 <body>
 
-  <form method="POST" action="../../public/owner/create-pg.php" class="login-form auth-form">
+  <form method="POST" action="../../public/owner/create-pg.php" class="login-form form">
     <input
       type="hidden"
       name="csrf_token"
