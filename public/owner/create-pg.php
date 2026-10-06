@@ -6,6 +6,8 @@ require_once $path . '/pg_recommendation/src/services/PGService.php';
 require_once $path . '/pg_recommendation/config/db.php';
 require_once $path . '/pg_recommendation/src/models/User.php';
 require_once $path . '/pg_recommendation/src/security/Csrf.php';
+require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -80,19 +82,16 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     } catch (InvalidArgumentException $e) {
       // safe validation errors
 
-      //$error = $e->getMessage();
+      $error = $e->getMessage();
     } catch (Throwable $e) {
       // technical error goes to server log
-      // error_log(
-      //   'Create PG controller Error: ' . $e->getMessage()
-      // );
+
+      error_log(
+        'Create PG controller Error: ' . $e->getMessage()
+      );
 
       // safe message for user
-      echo "<pre>";
-      print_r($e->getMessage());
-      echo "</pre>";
-      die();
-      //    $error = 'Unable to create PG. Please try again.';
+      $error = 'Unable to create PG. Please try again.';
     }
   }
 }

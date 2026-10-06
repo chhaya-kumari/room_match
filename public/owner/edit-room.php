@@ -11,6 +11,7 @@ require_once $path . '/pg_recommendation/src/models/Room.php';
 require_once $path . '/pg_recommendation/src/validators/RoomValidator.php';
 require_once $path . '/pg_recommendation/src/security/Csrf.php';
 require_once $path . '/pg_recommendation/config/db.php';
+require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
 
 
 SessionManager::start();
@@ -28,8 +29,7 @@ $pgModel = new PG($database->conn);
 $roomModel = new Room($database->conn);
 
 $authorizationService = new AuthorizationService(
-  $pgModel,
-  $roomModel
+  $database->conn
 );
 
 $roomService = new RoomService($database->conn);
@@ -39,7 +39,7 @@ $roomService = new RoomService($database->conn);
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
   try {
-    // Get PG ID from URL
+    // Get Room ID from URL
     $roomId = filter_input(
       INPUT_GET,
       'room_id',
@@ -63,12 +63,14 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // post request handling
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $formData = [];
   try {
     // csrf 
     if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
-      throw new InvalidArgumentException(
-        'Invalid Csrf token.'
-      );
+      http_response_code(403);
+      error_log('CSRF token validation failed.');
+      echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
+      exit;
     }
 
     $roomId = filter_input(INPUT_POST, 'room_id', FILTER_VALIDATE_INT);
@@ -76,6 +78,9 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     if (!$roomId) {
       throw new InvalidArgumentException('Invalid room Id.');
     }
+
+    $room = $authorizationService->verifyRoomOwnership($roomId, $ownerId);
+    $pgId = $room['pg_id'];
 
     // Collect form data into an array so we don't lose it if validation fails
 
@@ -116,18 +121,18 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 
     SessionManager::setFlash('success', 'Room updated successfully');
 
-    $room = $authorizationService
-      ->verifyRoomOwnership(
-        $roomId,
-        $ownerId
-      );
-
-    $pgId = $room['pg_id'];
 
     header(
       'Location: /pg_recommendation/public/owner/rooms.php?pg_id='
         . $pgId
     );
+
+    exit;
+  } catch (AuthorizationException $e) {
+
+    SessionManager::setFlash('error', $e->getMessage());
+
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
 
     exit;
   } catch (InvalidArgumentException $e) {

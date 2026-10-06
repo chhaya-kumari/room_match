@@ -7,6 +7,7 @@ require_once $path . '/pg_recommendation/src/services/SessionManager.php';
 require_once $path . '/pg_recommendation/src/services/RoomService.php';
 require_once $path . '/pg_recommendation/src/security/Csrf.php';
 require_once $path . '/pg_recommendation/config/db.php';
+require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -50,8 +51,11 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
 
   try {
     if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
-      throw new InvalidArgumentException('Invalid Csrf token.');
-    };
+      http_response_code(403);
+      error_log('CSRF token validation failed.');
+      echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
+      exit;
+    }
 
     $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
 
@@ -101,12 +105,19 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         . $pgId
     );
     exit;
+  } catch (AuthorizationException $e) {
+
+    SessionManager::setFlash('error', $e->getMessage());
+
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
+
+    exit;
   } catch (InvalidArgumentException $e) {
     // safe validation errors
     $error = $e->getMessage();
   } catch (Throwable $e) {
     error_log(
-      'Room creatio failed: ' . $e->getMessage()
+      'Room creation failed: ' . $e->getMessage()
     );
 
     $error = $e->getMessage();

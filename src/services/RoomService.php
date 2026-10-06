@@ -9,14 +9,12 @@ require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
 class RoomService
 {
   private Room $roomModel;
-  private PG $pgModel;
   private AuthorizationService $authorizationService;
 
   public function __construct(PDO $db)
   {
-    $this->pgModel = new PG($db);
     $this->roomModel = new Room($db);
-    $this->authorizationService = new AuthorizationService($this->pgModel, $this->roomModel);
+    $this->authorizationService = new AuthorizationService($db);
   }
 
   public function createRoom($pgId, $ownerId, $roomType, $capacity, $occupiedBeds, $rent, $securityDeposit, $bathroomType, $description, $windowVentilation)

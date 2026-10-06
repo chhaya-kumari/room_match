@@ -5,7 +5,10 @@ require_once $path . '/pg_recommendation/src/services/SessionManager.php';
 require_once $path . '/pg_recommendation/src/services/PGService.php';
 require_once $path . '/pg_recommendation/config/db.php';
 require_once $path . '/pg_recommendation/src/security/Csrf.php';
+require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+
 $serviceConfig = require_once $path . '/pg_recommendation/config/services.php';
+
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -68,7 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
   try {
-    Token::verifyToken($_POST['csrf_token'] ?? '');
+    if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
+      http_response_code(403);
+      error_log('CSRF token validation failed.');
+      echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
+      exit;
+    }
 
     $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
 
@@ -109,6 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] && $_SERVER['REQUEST_METHOD'] === 'POST') {
     //redirect to next phase 
 
     header('Location: /pg_recommendation/public/owner/rooms.php?pg_id=' . $pgId);
+
+    exit;
+  } catch (AuthorizationException $e) {
+
+    SessionManager::setFlash('error', $e->getMessage());
+
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
 
     exit;
   } catch (InvalidArgumentException $e) {

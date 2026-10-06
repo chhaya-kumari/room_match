@@ -56,7 +56,7 @@ class Room
 
   public function update(int $roomId, int $pgId, $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, $bathroomType, $description, $windowVentilation)
   {
-    $sql = "update rooms set room_type = :room_type, capacity= :capacity, occupied_beds = :occupied_beds, rent = :rent, security_deposit = :security_deposit, bathroom_type = :bathroom_type, description = :description, window_ventilation = :window_ventilation where room_id = :room_id and pg_id = :pg_id";
+    $sql = "update rooms set room_type = :room_type, capacity= :capacity, occupied_beds = :occupied_beds, rent = :rent, security_deposit = :security_deposit, bathroom_type = :bathroom_type, description = :description, window_ventilation = :window_ventilation updated_at = CURRENT_TIMESTAMP where room_id = :room_id and pg_id = :pg_id";
 
     $stmt = $this->db->prepare($sql);
     $stmt->execute([

@@ -41,7 +41,7 @@ class PG
   public function updateDetails($pgId, $ownerId, $description, $gender_preference, $rules, $notice_period_days, $lock_in_period_months)
   {
     $sql = "update pgs set description = :desc, gender_preference = :gender_preference, 
-    rules = :rules,notice_period_days = :notice_period_days, lock_in_period_months = :lock_in_period_months where pg_id = :pg_id and owner_id = :owner_id";
+    rules = :rules,notice_period_days = :notice_period_days, lock_in_period_months = :lock_in_period_months updated_at = CURRENT_TIMESTAMP where pg_id = :pg_id and owner_id = :owner_id";
 
     $stmt = $this->db->prepare($sql);
     $stmt->execute([

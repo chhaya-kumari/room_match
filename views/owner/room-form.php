@@ -60,7 +60,6 @@
       min="1"
       required>
 
-
     <!-- Occupied Beds -->
     <label for="occupied_beds">Occupied Beds</label>
     <input
@@ -210,7 +209,7 @@
 <?php endif; ?>
 
 
-<button type="button">
+<button type="submit" onclick="window.location.href='/pg_recommendation/public/owner/amenities.php?pg_id=<?= htmlspecialchars($pgId) ?>'">
   Continue
 </button>
 
