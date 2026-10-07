@@ -1,14 +1,22 @@
 <?php
 
+$path = $_SERVER['DOCUMENT_ROOT'];
+require_once $path . '/pg_recommendation/src/models/PG.php';
+require_once $path . '/pg_recommendation/src/models/Room.php';
+require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+require_once $path . '/pg_recommendation/src/models/Charge.php';
+
+
 class AuthorizationService
 {
   private PG $pgModel;
   private Room $roomModel;
-
-  public function __construct(PG $pgModel, Room $roomModel)
+  private Charge $chargeModel;
+  public function __construct(PDO $db)
   {
-    $this->pgModel = $pgModel;
-    $this->roomModel = $roomModel;
+    $this->pgModel = new PG($db);
+    $this->roomModel = new Room($db);
+    $this->chargeModel = new Charge($db);
   }
 
   public function verifyPGOwnership(int $pgId, int $ownerId)
@@ -35,7 +43,7 @@ class AuthorizationService
     }
 
     if ((int)$pg['owner_id'] !== $ownerId) {
-      throw new InvalidArgumentException(
+      throw new AuthorizationException(
         'You are not authorized to manage this PG.'
       );
     }
@@ -62,5 +70,22 @@ class AuthorizationService
     );
 
     return $room;
+  }
+
+  public function verifyChargeOwnership(
+    int $chargeId,
+    int $ownerId
+  ) {
+    $charge = $this->chargeModel->findById($chargeId);
+
+    if ($charge === null) {
+      throw new InvalidArgumentException(
+        'Charge not found.'
+      );
+    }
+
+    $this->verifyPGOwnership((int)$charge['pg_id'], $ownerId);
+
+    return $charge;
   }
 }
