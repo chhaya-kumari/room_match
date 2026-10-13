@@ -48,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     SessionManager::setFlash('success', 'Charge deleted successfully.');
 
-
     header('Location: /pg_recommendation/public/owner/charges.php?pg_id=' . $pgId);
 
     exit;

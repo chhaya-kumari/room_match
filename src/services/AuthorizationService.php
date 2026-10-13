@@ -5,6 +5,7 @@ require_once $path . '/pg_recommendation/src/models/PG.php';
 require_once $path . '/pg_recommendation/src/models/Room.php';
 require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
 require_once $path . '/pg_recommendation/src/models/Charge.php';
+require_once $path . '/pg_recommendation/src/models/PGImage.php';
 
 
 class AuthorizationService
@@ -12,11 +13,13 @@ class AuthorizationService
   private PG $pgModel;
   private Room $roomModel;
   private Charge $chargeModel;
+  private PGImage $pgImageModel;
   public function __construct(PDO $db)
   {
     $this->pgModel = new PG($db);
     $this->roomModel = new Room($db);
     $this->chargeModel = new Charge($db);
+    $this->pgImageModel = new PGImage($db);
   }
 
   public function verifyPGOwnership(int $pgId, int $ownerId)
@@ -87,5 +90,22 @@ class AuthorizationService
     $this->verifyPGOwnership((int)$charge['pg_id'], $ownerId);
 
     return $charge;
+  }
+
+  public function verifyImageOwnership(
+    int $imageId,
+    int $ownerId
+  ) {
+    $image = $this->pgImageModel->findById($imageId);
+
+    if ($image === null) {
+      throw new InvalidArgumentException(
+        'Image not found.'
+      );
+    }
+
+    $this->verifyPGOwnership((int)$image['pg_id'], $ownerId);
+
+    return $image;
   }
 }
