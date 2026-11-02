@@ -1,20 +1,12 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
-require_once $path . '/pg_recommendation/src/validators/AmenityValidator.php';
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/AmenityService.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/models/Amenity.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
 
-$error = null;
+$error = SessionManager::getFlash('error') ?: null;
 $success = SessionManager::getFlash('success');
 
 $ownerId = SessionManager::userId();
@@ -87,23 +79,25 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
       );
     }
 
-    $amenities = [];
+    $amenityData = [];
+    $selectedAmenities = [];
 
     foreach ($submittedAmenities as $amenityId => $data) {
-      if (!is_array($data) || !isset($data['selected'])) {
+      if (!is_array($data) || ($data['selected'] ?? null) !== '1') {
         continue;
       }
 
-      if ($data['selected'] !== '1') {
-        continue;
-      }
+      $includedInRent = $data['included_in_rent'] ?? '1';
 
-      $amenities[$amenityId] = [
-        'included_in_rent' => $data['included_in_rent'] ?? '1'
+      $amenityData[$amenityId] = [
+        'included_in_rent' => $includedInRent
       ];
+
+      // Keep the submitted selections for re-rendering.
+      $selectedAmenities[$amenityId] = (int) $includedInRent;
     }
 
-    $amenityService->updatePgAmenities($pgId, $ownerId, $amenities);
+    $amenityService->updatePgAmenities($pgId, $ownerId, $amenityData);
     SessionManager::setFlash('success', 'Amenities updated successfully.');
 
     header(
@@ -120,12 +114,14 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     exit;
   } catch (InvalidArgumentException $e) {
     $error = $e->getMessage();
+    $amenities = $amenityService->getAllAmenities();
   } catch (Throwable $e) {
     error_log(
       'Amenities update failed: ' . $e->getMessage()
     );
-
     $error = 'Unable to update amenities. Please try again.';
+
+    $amenities = $amenityService->getAllAmenities();
   }
 }
 

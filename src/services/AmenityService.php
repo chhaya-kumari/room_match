@@ -1,9 +1,7 @@
 <?php
+
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/models/PG.php';
-require_once $path . '/pg_recommendation/src/models/Amenity.php';
-require_once $path . '/pg_recommendation/src/validators/AmenityValidator.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 class AmenityService
 {
@@ -26,10 +24,10 @@ class AmenityService
     return $this->amenityModel->findByPgId($pgId);
   }
 
-  public function updatePgAmenities($pgId, $ownerId, $amenities)
+  public function updatePgAmenities(int $pgId, int $ownerId, array $amenities)
   {
     // verify PG ownership
-    $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
+    $this->authorizationService->verifyPGCanBeEdited($pgId, $ownerId);
 
     // validate submited values
     AmenityValidator::validateSelection($amenities);
