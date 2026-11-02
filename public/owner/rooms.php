@@ -1,20 +1,14 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/RoomService.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
 
 $ownerId = SessionManager::userId();
 
-$error = null;
+$error = SessionManager::getFlash('error') ?: null;
 $success = SessionManager::getFlash('success');
 
 $rooms = [];
@@ -38,12 +32,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     $rooms = $roomService->getRoomsByPgId($pgId, $ownerId);
+  } catch (AuthorizationException $e) {
+
+    SessionManager::setFlash('error', $e->getMessage());
+
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
+
+    exit;
+  } catch (InvalidArgumentException $e) {
+    // safe validation errors
+    $error = $e->getMessage();
   } catch (Throwable $e) {
     error_log(
       'Room retrieval failed: ' . $e->getMessage()
     );
 
-    $error = $e->getMessage();
+    $error = 'Unable to load rooms. Please try again.';
   }
 }
 
@@ -119,8 +123,6 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     error_log(
       'Room creation failed: ' . $e->getMessage()
     );
-
-    $error = $e->getMessage();
 
     $error = 'Unable to add room. Please try again.';
   }

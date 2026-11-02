@@ -1,18 +1,7 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/RoomService.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
-require_once $path . '/pg_recommendation/src/models/PG.php';
-require_once $path . '/pg_recommendation/src/models/Room.php';
-require_once $path . '/pg_recommendation/src/validators/RoomValidator.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 
@@ -53,6 +42,11 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     $room = $authorizationService->verifyRoomOwnership($roomId, $ownerId);
+  } catch (AuthorizationException $e) {
+
+    SessionManager::setFlash('error', $e->getMessage());
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
+    exit;
   } catch (InvalidArgumentException $e) {
     $error = $e->getMessage();
   } catch (Throwable $e) {
@@ -140,33 +134,23 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
     $error = $e->getMessage();
 
     //If validation fails, preserve what the user typed so they don't have to retype everything
-    if (isset($formData)) {
-      $room = $formData;
-    } else if (!empty($roomId)) {
-      try {
-        $room = $authorizationService
-          ->verifyRoomOwnership(
-            $roomId,
-            $ownerId
-          );
-      } catch (Throwable $ignored) {
-        $room = null;
-      }
+    if ($room !== null && !empty($formData)) {
+      $room = array_merge($room, $formData);
     }
   } catch (Throwable $e) {
     error_log('Room update failed:' . $e->getMessage());
     $error = 'Unable to update room. Please try again.';
 
-    if (isset($formData)) {
-      $room = $formData;
+    if ($room !== null && !empty($formData)) {
+      $room = array_merge($room, $formData);
     }
   }
 }
 
+if ($room === null) {
+  SessionManager::setFlash('error', 'Room not found or unavailable.');
+  header('Location: /pg_recommendation/public/owner/dashboard.php');
+  exit;
+}
+
 require_once $path .  '/pg_recommendation/views/owner/edit-room-form.php';
-
-// during test error 1 encountered
-// No, the reason your previous values are not displaying is due to a variable assignment mismatch in your GET request logic.In your GET block, you call $authorizationService->verifyRoomOwnership($roomId, $ownerId) and assign the result to a variable named plural $rooms instead of singular $room. Because your HTML form relies entirely on $room, it finds nothing, and your form fields load completely blank.Additionally, in your POST block, if validation fails (inside the catch block), you attempt to reload the room data, but if $room was already populated with submitted form data, your catch block overwrites it completely by fetching the old database version again, wiping out what the user just typed.
-
-// error 2
-// IDOR (Insecure Direct Object Reference) : owner being able to edit the another room just by changing the room id in url; 

@@ -8,9 +8,9 @@ class Room
     $this->db = $db;
   }
 
-  public function create($pgId, $roomType, $capacity, $occupiedBeds, $rent, $securityDeposit, $bathroomType, $description, $windowVentilation)
+  public function create(int $pgId, string $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, string $bathroomType, ?string $description, bool $windowVentilation): int
   {
-    $sql = "insert into rooms (pg_id, room_type, capacity, occupied_beds, rent, security_deposit, bathroom_type, description, window_ventilation) values (:pg_id, :room_type, :capacity, :occupied_beds, :rent, :security_deposit, :bathroom_type, :description, :window_ventilation)";
+    $sql = "INSERT INTO rooms (pg_id, room_type, capacity, occupied_beds, rent, security_deposit, bathroom_type, description, window_ventilation) VALUES (:pg_id, :room_type, :capacity, :occupied_beds, :rent, :security_deposit, :bathroom_type, :description, :window_ventilation)";
 
     $stmt = $this->db->prepare($sql);
 
@@ -28,9 +28,9 @@ class Room
     return (int) $this->db->lastInsertId();
   }
 
-  public function findByPgId($pgId)
+  public function findByPgId(int $pgId): array
   {
-    $sql = "select room_id, pg_id, room_type, capacity, occupied_beds, (capacity - occupied_beds) AS available_beds, rent, security_deposit, bathroom_type, description, window_ventilation, created_at, updated_at from rooms where pg_id = :pg_id order by room_id asc";
+    $sql = "SELECT room_id, pg_id, room_type, capacity, occupied_beds, (capacity - occupied_beds) AS available_beds, rent, security_deposit, bathroom_type, description, window_ventilation, created_at, updated_at FROM rooms WHERE pg_id = :pg_id ORDER BY room_id ASC";
 
     $stmt = $this->db->prepare($sql);
     $stmt->execute([
@@ -40,9 +40,9 @@ class Room
     return $stmt->fetchAll();
   }
 
-  public function findByRoomId($roomId)
+  public function findByRoomId(int $roomId)
   {
-    $sql = "select room_id, pg_id, room_type, capacity, occupied_beds, (capacity - occupied_beds) AS available_beds, rent, security_deposit, bathroom_type, description, window_ventilation, created_at, updated_at from rooms where room_id = :room_id limit 1";
+    $sql = "SELECT room_id, pg_id, room_type, capacity, occupied_beds, (capacity - occupied_beds) AS available_beds, rent, security_deposit, bathroom_type, description, window_ventilation, created_at, updated_at from rooms where room_id = :room_id limit 1";
     $stmt = $this->db->prepare($sql);
 
     $stmt->execute([
@@ -54,9 +54,9 @@ class Room
     return $room ?: null;
   }
 
-  public function update(int $roomId, int $pgId, $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, $bathroomType, $description, $windowVentilation)
+  public function update(int $roomId, int $pgId, string $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, string $bathroomType, ?string $description, bool $windowVentilation)
   {
-    $sql = "update rooms set room_type = :room_type, capacity= :capacity, occupied_beds = :occupied_beds, rent = :rent, security_deposit = :security_deposit, bathroom_type = :bathroom_type, description = :description, window_ventilation = :window_ventilation updated_at = CURRENT_TIMESTAMP where room_id = :room_id and pg_id = :pg_id";
+    $sql = "UPDATE rooms SET room_type = :room_type, capacity= :capacity, occupied_beds = :occupied_beds, rent = :rent, security_deposit = :security_deposit, bathroom_type = :bathroom_type, description = :description, window_ventilation = :window_ventilation, updated_at = CURRENT_TIMESTAMP WHERE room_id = :room_id AND pg_id = :pg_id";
 
     $stmt = $this->db->prepare($sql);
     $stmt->execute([
@@ -75,7 +75,7 @@ class Room
 
   public function delete(int $roomId, int $pgId)
   {
-    $sql = "delete from rooms where room_id = :room_id and pg_id= :pg_id";
+    $sql = "DELETE FROM rooms WHERE room_id = :room_id AND pg_id= :pg_id";
     $stmt = $this->db->prepare($sql);
     $stmt->execute([
       ":room_id" => $roomId,

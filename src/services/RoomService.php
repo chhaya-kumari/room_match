@@ -1,10 +1,7 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/models/PG.php';
-require_once $path . '/pg_recommendation/src/models/Room.php';
-require_once $path . '/pg_recommendation/src/validators/RoomValidator.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 class RoomService
 {
@@ -17,11 +14,11 @@ class RoomService
     $this->authorizationService = new AuthorizationService($db);
   }
 
-  public function createRoom($pgId, $ownerId, $roomType, $capacity, $occupiedBeds, $rent, $securityDeposit, $bathroomType, $description, $windowVentilation)
+  public function createRoom(int $pgId, int $ownerId, string $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, string $bathroomType, ?string $description, bool $windowVentilation)
   {
 
     // verify pgId, ownerId, ownership
-    $pg = $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
+    $this->authorizationService->verifyPGCanBeEdited($pgId, $ownerId);
 
     // validate room values
     $roomValidator = new RoomValidator();
@@ -41,24 +38,26 @@ class RoomService
     );
   }
 
-  public function getRoomsByPgId($pgId, $ownerId)
+  public function getRoomsByPgId(int $pgId, int $ownerId)
   {
-    $pg = $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
-
+    $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
     return $this->roomModel->findByPgId($pgId);
   }
 
-  public function getRoom($roomId, $ownerId)
+  public function getRoom(int $roomId, int $ownerId)
   {
     $room = $this->authorizationService->verifyRoomOwnership($roomId, $ownerId);
 
     return $room;
   }
 
-  public function updateRoom(int $roomId, int $ownerId,  $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, $bathroomType, $description, $windowVentilation)
+  public function updateRoom(int $roomId, int $ownerId, string  $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, string $bathroomType, ?string $description, bool $windowVentilation)
   {
     $room = $this->authorizationService->verifyRoomOwnership($roomId, $ownerId);
-
+    $this->authorizationService->verifyPGCanBeEdited(
+      (int)$room['pg_id'],
+      $ownerId
+    );
     // validate room input
     $roomValidator = new RoomValidator();
     $roomValidator::validate($roomType, $capacity, $occupiedBeds, $rent, $securityDeposit, $bathroomType, $description);
@@ -77,9 +76,14 @@ class RoomService
     );
   }
 
-  public function deleteRoom($roomId, $ownerId)
+  public function deleteRoom(int $roomId, int $ownerId)
   {
     $room = $this->authorizationService->verifyRoomOwnership($roomId, $ownerId);
+
+    $this->authorizationService->verifyPGCanBeEdited(
+      (int)$room['pg_id'],
+      $ownerId
+    );
 
     return $this->roomModel->delete(
       $roomId,

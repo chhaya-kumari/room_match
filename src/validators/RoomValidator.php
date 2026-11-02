@@ -6,7 +6,7 @@ class RoomValidator
 
   private const BATHROOM_TYPES = ['attached', 'shared', 'none'];
 
-  public static function validateRoomType($roomType)
+  public static function validateRoomType(string $roomType)
   {
     if (!in_array($roomType, self::ROOM_TYPES, true)) {
       throw new InvalidArgumentException(
@@ -57,7 +57,7 @@ class RoomValidator
     }
   }
 
-  public static function validateBathroomType($bathroomType)
+  public static function validateBathroomType(string $bathroomType)
   {
     if (!in_array(
       $bathroomType,
@@ -70,7 +70,7 @@ class RoomValidator
     }
   }
 
-  public static function validateDescription($description)
+  public static function validateDescription(?string $description)
   {
     if (
       $description !== null &&
@@ -82,7 +82,7 @@ class RoomValidator
     }
   }
 
-  public static function validate($roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, $bathroomType, $description)
+  public static function validate(string $roomType, int $capacity, int $occupiedBeds, float $rent, ?float $securityDeposit, string $bathroomType, ?string $description)
   {
     self::validateRoomType($roomType);
     self::validateSecurityDeposit($securityDeposit);
