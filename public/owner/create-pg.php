@@ -1,13 +1,6 @@
 <?php
 $path = $_SERVER["DOCUMENT_ROOT"];
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/PGService.php';
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/models/User.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -18,22 +11,39 @@ $success = null;
 // display flash message
 $success = SessionManager::getFlash('success');
 
+$pgName = '';
+$pgAddress = '';
+$locationId = 0;
 // handle post req
 
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+
+  if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
+    http_response_code(403);
+    error_log('CSRF token validation failed.');
+    echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
+    exit;
+  }
+
   $pgName = trim($_POST['pg_name'] ?? '');
   $pgAddress = trim($_POST['pg_address'] ?? '');
-  $locationId = $_POST['location_id'] ?? 0;
+  $locationId = (int)($_POST['location_id'] ?? 0);
 
-  if (empty($pgName)) {
-    $error = "Please enter PG Name";
+  $errors = [];
+
+  if ($pgName === '') {
+    $errors[] = 'Please enter PG Name.';
   }
-  if (empty($pgAddress)) {
-    $error = "Please enter PG Address";
+
+  if ($pgAddress === '') {
+    $errors[] = 'Please enter PG Address.';
   }
+
   if ($locationId <= 0) {
-    $error = 'Please select a valid location.';
+    $errors[] = 'Please select a valid location.';
   }
+
+  $error = !empty($errors) ? implode(' ', $errors) : null;
 
   // create PG
 
@@ -72,7 +82,6 @@ if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') 
         'success',
         "PG created successfully. PG ID: {$pgId}"
       );
-
 
       header(
         'Location: /pg_recommendation/public/owner/pg-details.php?pg_id=' . $pgId

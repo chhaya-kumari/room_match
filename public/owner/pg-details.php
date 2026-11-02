@@ -1,14 +1,9 @@
 <?php
-$path = $_SERVER["DOCUMENT_ROOT"];
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/PGService.php';
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
+
+$path = $_SERVER['DOCUMENT_ROOT'];
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 $serviceConfig = require_once $path . '/pg_recommendation/config/services.php';
-
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -41,47 +36,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
       exit;
     }
 
+    $authorizationService = new AuthorizationService($database->conn);
+    $authorizationService->verifyPGOwnership($pgId, $ownerId);
+
     // Get PG through service
-    $pg = $pgService->getPG($pgId);
+    $pg = $pgService->getPG($pgId, $ownerId);
+  } catch (AuthorizationException $e) {
 
-    // Check whether PG exists
-    if ($pg === null) {
-      throw new InvalidArgumentException(
-        'PG not found.'
-      );
-    }
+    SessionManager::setFlash('error', $e->getMessage());
 
-    // Check ownership
-    if ((int)$pg['owner_id'] !== (int)$ownerId) {
-      throw new InvalidArgumentException(
-        'You are not authorized to edit this PG.'
-      );
-    }
+    header('Location: /pg_recommendation/public/owner/dashboard.php');
+
+    exit;
+  } catch (InvalidArgumentException $e) {
+    // safe validation errors
+    $error = $e->getMessage();
   } catch (Throwable $e) {
 
     error_log(
       'PG details retrieval failed: ' . $e->getMessage()
     );
 
-    $error = $e->getMessage();
+    $error = 'PG details retrieval failed.';
   }
 }
 
 
 if ($_SERVER['REQUEST_METHOD'] && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
+  $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
+
   try {
+
+    if (!$pgId) {
+      throw new InvalidArgumentException('Invalid PG ID.');
+    }
+
     if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
       http_response_code(403);
       error_log('CSRF token validation failed.');
       echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
       exit;
-    }
-
-    $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
-
-    if (!$pgId) {
-      throw new InvalidArgumentException('Invalid PG ID.');
     }
 
     // submitted details 
@@ -94,14 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // convert empty optional values to null
 
-    $description = $description === '' ? null : $description;
+    $description = $description === '' ? null :  $description;
 
     $rules = $rules === '' ? null : $rules;
 
     $notice_period_days = $notice_period_days === '' ? null : (int)$notice_period_days;
 
     $lock_in_period_months = $lock_in_period_months === '' ? null : (int)$lock_in_period_months;
-
 
     //update pg details
 
@@ -127,28 +121,30 @@ if ($_SERVER['REQUEST_METHOD'] && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     exit;
   } catch (InvalidArgumentException $e) {
-    // safe validation errors
+    // Expected validation error: preserve the useful message.
     $error = $e->getMessage();
-  } catch (Throwable $e) {
-    error_log(
-      'PG details update failed: ' . $e->getMessage()
-    );
 
-    $error = $e->getMessage();
-    /*
-      Reload PG so that the form can still be displayed
-      when validation fails.
-    */
-    if (isset($pgId) && $pgId) {
-
+    if (!empty($pgId)) {
       try {
-        $pg = $pgService->getPG($pgId);
+        $pg = $authorizationService->verifyPGOwnership($pgId, $ownerId);
       } catch (Throwable $exception) {
         $pg = null;
       }
     }
+    exit;
+  } catch (Throwable $e) {
+    error_log('PG details update failed: ' . $e->getMessage());
 
+    // Show a safe message, not internal exception details.
     $error = 'Unable to update PG. Please try again.';
+
+    if (!empty($pgId)) {
+      try {
+        $pg = $authorizationService->verifyPGOwnership($pgId, $ownerId);
+      } catch (Throwable $exception) {
+        $pg = null;
+      }
+    }
   }
 }
 
