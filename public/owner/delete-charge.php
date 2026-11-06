@@ -1,25 +1,19 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/ChargeService.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
 
 $ownerId = SessionManager::userId();
+$pgId = null;
 
-$db = new Database();
-$chargeService = new ChargeService($db->conn);
-$authorizationService = new AuthorizationService($db->conn);
-
-$success = null;
-$error = null;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  SessionManager::setFlash('error', 'Invalid request method.');
+  header('Location: /pg_recommendation/public/owner/dashboard.php');
+  exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
@@ -40,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$chargeId) {
       throw new InvalidArgumentException('Invalid charge ID.');
     }
+
+    $db = new Database();
+    $chargeService = new ChargeService($db->conn);
+    $authorizationService = new AuthorizationService($db->conn);
 
     $charge = $authorizationService->verifyChargeOwnership($chargeId, $ownerId);
     $pgId = $charge['pg_id'];
@@ -72,6 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     error_log('Delete charge failed: ' . $e->getMessage());
 
-    $error = 'Unable to delete charge. Please try again.';
+    SessionManager::setFlash(
+      'error',
+      'Unable to delete charge. Please try again.'
+    );
+
+    if (!empty($pgId)) {
+      header('Location: /pg_recommendation/public/owner/charges.php?pg_id=' . $pgId);
+    } else {
+      header('Location: /pg_recommendation/public/owner/dashboard.php');
+    }
+
+    exit;
   }
 }

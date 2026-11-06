@@ -1,15 +1,7 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
-require_once $path . '/pg_recommendation/src/validators/ChargeValidator.php';
-require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-require_once $path . '/pg_recommendation/src/services/ChargeService.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
-
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -51,9 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Location: /pg_recommendation/public/owner/dashboard.php');
 
     exit;
-
-    //Because an invalid charge ID isn't a form validation error.
-    //There is nothing useful for the user to correct on the edit form.
   } catch (Throwable $e) {
 
     error_log('Edit charge retrieval failed: ' . $e->getMessage());
@@ -79,11 +68,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $charge = $authorizationService->verifyChargeOwnership($chargeId, $ownerId);
 
+    // Normalize form data.
+
+    $chargeName = trim($_POST['charge_name'] ?? '');
+    $unit = trim($_POST['unit'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+
     $formData = [
-      'charge_name' => $_POST['charge_name'] ?? '',
+      'charge_name' => $chargeName,
       'amount' => (float)($_POST['amount'] ?? 0),
-      'unit' => trim($_POST['unit'] ?? ''),
-      'description' => trim($_POST['description'] ?? ''),
+      'unit' => $unit === '' ? null : $unit,
+      'description' => $description === '' ? null : $description,
       'charge_basis' => $_POST['charge_basis'] ?? '',
     ];
 
@@ -104,9 +99,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     exit;
   } catch (InvalidArgumentException $e) {
-    // Validation/input error.
-    // Keep the user on the current form.
-
     $error = $e->getMessage();
   } catch (Throwable $e) {
 

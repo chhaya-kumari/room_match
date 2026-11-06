@@ -2,11 +2,11 @@
 
 class ChargeValidator
 {
-  public static function chargeName($chargeName)
+  public static function chargeName(string $chargeName)
   {
     $chargeName = trim($chargeName);
 
-    if (!$chargeName || strlen($chargeName) > 100) {
+    if (!$chargeName || mb_strlen($chargeName) > 100) {
       throw new InvalidArgumentException(
         'Charge name is required and must not exceed 100 characters.'
       );
@@ -22,7 +22,7 @@ class ChargeValidator
     }
   }
 
-  public static function chargeBasis($chargeBasis)
+  public static function chargeBasis(string $chargeBasis)
   {
     if (!in_array(
       $chargeBasis,
@@ -35,10 +35,12 @@ class ChargeValidator
     }
   }
 
-  public static function unit($chargeBasis, $unit)
+  public static function unit(string $chargeBasis, ?string $unit)
   {
     if ($chargeBasis === 'per_unit') {
-      if (!$unit || strlen($unit) > 30) {
+      $unit = $unit !== null  ? trim($unit) : null;
+
+      if ($unit === null || $unit === '' || mb_strlen($unit) > 30) {
         throw new InvalidArgumentException(
           'Unit is required for a per-unit charge and must not exceed 30 characters.'
         );
@@ -55,7 +57,7 @@ class ChargeValidator
     return true;
   }
 
-  public static function validateDescription($description)
+  public static function validateDescription(?string $description)
   {
     if (
       $description !== null &&
@@ -67,7 +69,7 @@ class ChargeValidator
     }
   }
 
-  public static function validate($amount, $chargeBasis, $unit, $description)
+  public static function validate(float $amount, string $chargeBasis, ?string $unit, ?string $description)
   {
     self::amount($amount);
     self::chargeBasis($chargeBasis);

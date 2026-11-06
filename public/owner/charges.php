@@ -3,16 +3,6 @@
 $path = $_SERVER['DOCUMENT_ROOT'];
 
 require_once $path . '/pg_recommendation/config/fileautoloader.php';
-// require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-// require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
-// require_once $path . '/pg_recommendation/src/validators/ChargeValidator.php';
-// require_once $path . '/pg_recommendation/src/middleware/AuthMiddleware.php';
-// require_once $path . '/pg_recommendation/src/services/SessionManager.php';
-// require_once $path . '/pg_recommendation/src/services/ChargeService.php';
-require_once $path . '/pg_recommendation/src/security/Csrf.php';
-require_once $path . '/pg_recommendation/config/db.php';
-// require_once $path . '/pg_recommendation/src/models/Charge.php';
-
 
 SessionManager::start();
 AuthMiddleware::requireRole('owner');
@@ -62,7 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+  $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
+
   try {
+    if (!$pgId) {
+      throw new InvalidArgumentException('Invalid PG ID.');
+    }
+
     // csrf validation
 
     if (!Token::verifyToken($_POST['csrf_token'] ?? '')) {
@@ -70,12 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       error_log('CSRF token validation failed.');
       echo "<h1>403 Forbidden</h1><p>CSRF token validation failed.</p>";
       exit;
-    }
-
-    $pgId = filter_input(INPUT_POST, 'pg_id', FILTER_VALIDATE_INT);
-
-    if (!$pgId) {
-      throw new InvalidArgumentException('Invalid PG ID.');
     }
 
     // check if the PG exists and belongs to the owner
@@ -98,17 +89,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $description === '' ? null : $description;
 
     $unit = $unit === '' ? null : $unit;
-
-    /*
-         * Service now handles:
-         
-         * - PG ownership
-         * - pg_amenity validation
-         * - amenity → charge name
-         * - independent charge name validation
-         * - form input validation
-         * - database creation through model
-    */
 
     $chargeId = $chargeService->createCharge(
       $pgId,
@@ -134,9 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     exit;
   } catch (InvalidArgumentException $e) {
-    // Validation/input error.
-    // Keep the user on the current form.
-
     $error = $e->getMessage();
   } catch (Throwable $e) {
 
@@ -153,7 +130,7 @@ if (!empty($pgId)) {
       $chargeService->getChargesByPgId($pgId, $ownerId);
 
     $separateAmenities =
-      $chargeService->getSeparateAmenities($pgId, $ownerId);
+      $chargeService->getAvailableSeparateAmenities($pgId, $ownerId);
   } catch (AuthorizationException $e) {
 
     SessionManager::setFlash(

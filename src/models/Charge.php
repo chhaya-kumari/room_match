@@ -12,7 +12,7 @@ class Charge
   /**
    * Get all charges belonging to a PG.
    */
-  public function findByPgId(int $pgId)
+  public function findByPgId(int $pgId): array
   {
     $sql = "SELECT
                 c.charge_id,
@@ -44,7 +44,7 @@ class Charge
   }
 
   // find one charge by its ID
-  public function findById(int $chargeId)
+  public function findById(int $chargeId): ?array
   {
     $sql = "SELECT
                 charge_id,
@@ -69,7 +69,7 @@ class Charge
   }
 
   // insert a new charge into the database
-  public function create($pgId, $pgAmenityId, $chargeName, $amount, $chargeBasis, $unit, $description)
+  public function create(int $pgId, ?int $pgAmenityId, string $chargeName, float $amount, string $chargeBasis, ?string $unit, ?string $description): int
   {
     $sql = "INSERT INTO charges (pg_id, pg_amenity_id, charge_name, amount, charge_basis, unit, description)
             VALUES (:pg_id, :pg_amenity_id, :charge_name, :amount, :charge_basis, :unit, :description)";
@@ -88,12 +88,31 @@ class Charge
     return $this->db->lastInsertId();
   }
 
+  /**
+   * Get amenity IDs already linked to charges for a PG.
+   */
+  public function findUsedPgAmenityIdsByPgId(int $pgId): array
+  {
+    $sql = "SELECT pg_amenity_id
+            FROM charges
+            WHERE pg_id = :pg_id
+              AND pg_amenity_id IS NOT NULL";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([':pg_id' => $pgId]);
+
+    return array_map(
+      'intval',
+      $stmt->fetchAll(PDO::FETCH_COLUMN)
+    );
+  }
+
   /* 
     Update editable charge information.
     Notice that pg_amenity_id is NOT updated.
   */
 
-  public function update($chargeId, $chargeName, $amount, $chargeBasis, $unit, $description)
+  public function update(int $chargeId, string $chargeName, float $amount, string $chargeBasis, ?string $unit, ?string $description): bool
   {
     $sql = "UPDATE charges
             SET charge_name = :charge_name,
@@ -115,7 +134,7 @@ class Charge
     ]);
   }
 
-  public function delete($chargeId)
+  public function delete(int $chargeId): bool
   {
     $sql = "DELETE FROM charges WHERE charge_id = :charge_id";
     $stmt = $this->db->prepare($sql);

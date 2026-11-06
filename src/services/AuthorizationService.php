@@ -1,12 +1,7 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/models/PG.php';
-require_once $path . '/pg_recommendation/src/models/Room.php';
-require_once $path . '/pg_recommendation/src/exceptions/AuthorizationException.php';
-require_once $path . '/pg_recommendation/src/models/Charge.php';
-require_once $path . '/pg_recommendation/src/models/PGImage.php';
-
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 class AuthorizationService
 {
@@ -107,5 +102,20 @@ class AuthorizationService
     $this->verifyPGOwnership((int)$image['pg_id'], $ownerId);
 
     return $image;
+  }
+
+  public function verifyPGCanBeEdited(int $pgId, int $ownerId): array
+  {
+    // First verify the PG exists and belongs to this owner.
+    $pg = $this->verifyPGOwnership($pgId, $ownerId);
+
+    // Only draft listings can be changed.
+    if (($pg['listing_status'] ?? '') !== 'draft') {
+      throw new AuthorizationException(
+        'This PG cannot be edited because it has been submitted for review.'
+      );
+    }
+
+    return $pg;
   }
 }

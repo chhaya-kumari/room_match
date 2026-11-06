@@ -1,21 +1,20 @@
 <?php
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/src/models/Charge.php';
-require_once $path . '/pg_recommendation/src/models/Amenity.php';
-require_once $path . '/pg_recommendation/src/services/AuthorizationService.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
 
 class ChargeService
 {
-  private PDO $db;
   private Charge $chargeModel;
   private Amenity $amenityModel;
+  private AuthorizationService $authorizationService;
 
   public function __construct(PDO $db)
   {
-    $this->db = $db;
+
     $this->chargeModel = new Charge($db);
     $this->amenityModel = new Amenity($db);
+    $this->authorizationService = new AuthorizationService($db);
   }
 
   private function validatePgAmenityId(int $pgId, ?int $pgAmenityId)
@@ -27,29 +26,50 @@ class ChargeService
     $separateAmenities = $this->amenityModel->findSeparateChargeAmenitiesByPgId($pgId);
 
     foreach ($separateAmenities as $amenity) {
-      if ($amenity['pg_amenity_id'] === $pgAmenityId) {
+      if ((int) $amenity['pg_amenity_id'] === $pgAmenityId) {
         return $amenity; // Valid pgAmenityId
       }
     }
 
-    throw new RuntimeException('The selected amenity is not configured as a separately billed amenity for this PG.');
+    throw new InvalidArgumentException('The selected amenity is not configured as a separately billed amenity for this PG.');
   }
 
-  public function getChargesByPgId(int $pgId, $ownerId)
+  public function getChargesByPgId(int $pgId, int $ownerId)
   {
-    $authorizationService = new AuthorizationService($this->db);
-    $authorizationService->verifyPGOwnership($pgId, $ownerId);
+
+    $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
 
     return $this->chargeModel->findByPgId($pgId);
   }
 
-  public function getSeparateAmenities(int $pgId, $ownerId)
+  public function getSeparateAmenities(int $pgId, int $ownerId)
   {
-    $authorizationService = new AuthorizationService($this->db);
-    $authorizationService->verifyPGOwnership($pgId, $ownerId);
+    $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
     return $this->amenityModel->findSeparateChargeAmenitiesByPgId($pgId);
   }
 
+  public function getAvailableSeparateAmenities(
+    int $pgId,
+    int $ownerId
+  ): array {
+    $this->authorizationService->verifyPGOwnership($pgId, $ownerId);
+
+    $separateAmenities =
+      $this->amenityModel->findSeparateChargeAmenitiesByPgId($pgId);
+
+    $usedAmenityIds =
+      $this->chargeModel->findUsedPgAmenityIdsByPgId($pgId);
+
+    return array_values(array_filter(
+      $separateAmenities,
+      fn($amenity) =>
+      !in_array(
+        (int) $amenity['pg_amenity_id'],
+        $usedAmenityIds,
+        true
+      )
+    ));
+  }
   // public function getChargeById(int $chargeId, int $pgId, $ownerId)
   // {
   //   $authorizationService = new AuthorizationService($this->db);
@@ -70,11 +90,11 @@ class ChargeService
   //   return $charge;
   // }
 
-  public function createCharge($pgId, $ownerId, $pgAmenityId, $chargeName, $amount, $chargeBasis, $unit, $description)
+  public function createCharge(int $pgId, int $ownerId, ?int $pgAmenityId, string $chargeName, float $amount, string $chargeBasis, ?string  $unit, ?string $description)
   {
     // Check if the PG exists and belongs to the owner
-    $authorizationService = new AuthorizationService($this->db);
-    $authorizationService->verifyPGOwnership($pgId, $ownerId);
+
+    $this->authorizationService->verifyPGCanBeEdited($pgId, $ownerId);
 
     //Amenity based charges validation
 
@@ -89,24 +109,22 @@ class ChargeService
       ChargeValidator::chargeName($chargeName);
     }
 
-    ChargeValidator::validate($amount, $chargeBasis, $unit, $description);
-
     // fixed monthly charges don't require a unit;
-
     if ($chargeBasis === 'fixed_monthly') {
       $unit = null;
     }
 
-    // Create the charge
+    ChargeValidator::validate($amount, $chargeBasis, $unit, $description);
 
+    // Create the charge
     return $this->chargeModel->create($pgId, $pgAmenityId, $chargeName, $amount, $chargeBasis, $unit, $description);
   }
 
-  public function updateCharge($chargeId, $ownerId, $chargeName, $amount, $chargeBasis, $unit, $description)
+  public function updateCharge(int $chargeId, int $ownerId, string $chargeName, float  $amount, string $chargeBasis, ?string $unit, ?string $description)
   {
     // Check if the PG exists and belongs to the owner
-    $authorizationService = new AuthorizationService($this->db);
-    $charge = $authorizationService->verifyChargeOwnership($chargeId, $ownerId);
+    $charge = $this->authorizationService->verifyChargeOwnership($chargeId, $ownerId);
+    $this->authorizationService->verifyPGCanBeEdited($charge['pg_id'], $ownerId);
 
     //Amenity based charges : names cannot be updated.
     if ($charge['pg_amenity_id'] !== null) {
@@ -115,22 +133,22 @@ class ChargeService
       ChargeValidator::chargeName($chargeName);
     }
 
-    ChargeValidator::validate($amount, $chargeBasis, $unit, $description);
-
-    // fixed monthly charges don't require a unit;
+    // fixed monthly charges don't require a unit;   
     if ($chargeBasis === 'fixed_monthly') {
       $unit = null;
     }
+
+    ChargeValidator::validate($amount, $chargeBasis, $unit, $description);
 
     // Update the charge
     return $this->chargeModel->update($chargeId, $chargeName, $amount, $chargeBasis, $unit, $description);
   }
 
-  public function deleteCharge($ownerId, $chargeId)
+  public function deleteCharge(int $ownerId, int $chargeId)
   {
     // Check if the PG exists and belongs to the owner
-    $authorizationService = new AuthorizationService($this->db);
-    $authorizationService->verifyChargeOwnership($chargeId, $ownerId);
+    $charge = $this->authorizationService->verifyChargeOwnership($chargeId, $ownerId);
+    $this->authorizationService->verifyPGCanBeEdited($charge['pg_id'], $ownerId);
 
     // Delete the charge
     return $this->chargeModel->delete($chargeId);

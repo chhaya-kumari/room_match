@@ -127,6 +127,7 @@
               <input type="hidden" name="charge_id" value="<?= htmlspecialchars($charge['charge_id']) ?>">
 
               <button type="submit">Delete</button>
+            </form>
           </div>
         <?php endforeach; ?>
       <?php else: ?>
@@ -137,7 +138,11 @@
     <!-- Continue -->
 
     <section>
-      <a href="images.php?pg_id=<?= (int)$pgId ?>" class="button">
+      <a href="/pg_recommendation/public/owner/amenities.php?pg_id=<?= (int) $pgId ?>">
+        Back
+      </a>
+
+      <a href="/pg_recommendation/public/owner/images.php?pg_id=<?= (int) $pgId ?>">
         Continue
       </a>
     </section>
