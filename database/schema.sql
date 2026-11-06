@@ -82,7 +82,7 @@ CREATE TABLE pgs (
     notice_period_days      INT NULL,
     lock_in_period_months   INT NULL,
     verification_status     ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
-    listing_status          ENUM('draft','active','inactive') NOT NULL DEFAULT 'draft',
+    listing_status          ENUM('draft','pending', 'active','inactive') NOT NULL DEFAULT 'draft',
     created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -168,6 +168,7 @@ CREATE TABLE pg_images (
 CREATE TABLE charges (
     charge_id       INT AUTO_INCREMENT PRIMARY KEY,
     pg_id           INT NOT NULL,
+    pg_amenity_id   INT NULL,
     charge_name     VARCHAR(100) NOT NULL,     -- 'Food','Electricity','Laundry','Maintenance'...
     amount          DECIMAL(10,2) NOT NULL,
     charge_basis    ENUM('fixed_monthly','per_unit') NOT NULL DEFAULT 'fixed_monthly',
@@ -176,7 +177,9 @@ CREATE TABLE charges (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_charges_pg FOREIGN KEY (pg_id) REFERENCES pgs(pg_id) ON DELETE CASCADE
+    CONSTRAINT fk_charges_pg FOREIGN KEY (pg_id) REFERENCES pgs(pg_id) ON DELETE CASCADE,
+    CONSTRAINT fk_charges_pg_amenity FOREIGN KEY (pg_amenity_id) REFERENCES pg_amenities(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_charge_pg_amenity (pg_amenity_id)
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
