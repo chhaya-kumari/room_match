@@ -1,63 +1,42 @@
 <?php
-require_once __DIR__ . '/../../src/middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../../src/security/Csrf.php';
 
 $path = $_SERVER['DOCUMENT_ROOT'];
-require_once $path . '/pg_recommendation/config/db.php';
-require_once $path . '/pg_recommendation/src/models/User.php';
+require_once $path . '/pg_recommendation/config/fileautoloader.php';
+
+SessionManager::start();
 AuthMiddleware::requireRole('owner');
-$database = new Database();
-$userModel = new User($database->conn);
-$user_id = SessionManager::userId();
-$user = $userModel->findProfile($user_id);
-?>
 
+$ownerId = (int)SessionManager::userId();
 
-<!DOCTYPE html>
-<html>
+$error = SessionManager::getFlash('error');
+$success = SessionManager::getFlash('success');
 
-<head>
-  <title>Owner Dashboard</title>
-</head>
+$ownerName = $_SESSION['full_name'] ?? 'PG Owner';
 
-<body>
-  <h1>Welcome to Owner Dashboard</h1>
+$dashboardData = [
+  'summary' => [
+    'total_pgs' => 0,
+    'total_rooms' => 0,
+    'occupied_beds' => 0,
+    'available_beds' => 0,
+    'draft_pgs' => 0,
+    'pending_pgs' => 0,
+    'active_pgs' => 0,
+  ],
+  'pgs' => [],
+];
 
-  <h2>Owner Profile</h2>
+try {
+  $database = new Database();
+  $dashboardService = new OwnerDashboardService($database->conn);
 
-  <p>
-    <strong>Name:</strong>
-    <?= htmlspecialchars($user['full_name']) ?>
-  </p>
+  $dashboardData = $dashboardService->getDashboardData($ownerId);
+} catch (Throwable $e) {
+  error_log('Owner dashboard loading failed: ' . $e->getMessage());
+  $error = 'Unable to load your dashboard right now. Please try again.';
+}
 
-  <p>
-    <strong>Email:</strong>
-    <?= htmlspecialchars($user['email']) ?>
-  </p>
+$summary = $dashboardData['summary'];
+$pgs = $dashboardData['pgs'];
 
-  <p>
-    <strong>Contact:</strong>
-    <?= htmlspecialchars($user['contact_number']) ?>
-  </p>
-
-  <p>
-    <strong>Gender:</strong>
-    <?= htmlspecialchars($user['gender'] ?? 'Not provided') ?>
-  </p>
-
-  <p>
-    <strong>Role:</strong>
-    <?= htmlspecialchars($user['role']) ?>
-  </p>
-
-  <form method="POST" action="../auth/logout.php">
-    <input
-      type="hidden"
-      name="csrf_token"
-      value="<?= htmlspecialchars(Token::getToken()) ?>">
-
-    <button type="submit">Logout</button>
-  </form>
-</body>
-
-</html>
+require_once $path . '/pg_recommendation/views/owner/dashboard-form.php';
