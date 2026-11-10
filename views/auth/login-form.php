@@ -8,7 +8,7 @@
 
 <body>
 
-  <form method="POST" action="../../public/auth/login.php" class="login-form auth-form">
+  <form method="POST" action="../../public/auth/login.php" class="login-form form">
     <input
       type="hidden"
       name="csrf_token"

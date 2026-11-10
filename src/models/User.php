@@ -9,10 +9,20 @@ class User
     $this->db = $db;
   }
 
+  public function findById($userId)
+  {
+    $sql = "select * from users where user_id = :user_id limit 1";
+    $stmt = $this->db->prepare($sql); //prepared statements to block sql injection attacks
+    $stmt->execute([
+      ':user_id' => $userId
+    ]);
+    return $stmt->fetch();
+  }
+
   public function findByEmail($email)
   {
     $sql = "select * from users where email = :email limit 1";
-    $stmt = $this->db->prepare($sql); //prepared statements to block sql injection attacks
+    $stmt = $this->db->prepare($sql);
     $stmt->execute([
       ':email' => $email
     ]);
@@ -26,6 +36,16 @@ class User
     $stmt->execute([
       ':contact' => $contactNumber
     ]);
+    return $stmt->fetch();
+  }
+
+  public function findProfile($userId)
+  {
+    $sql = "select user_id, full_name, email, contact_number, gender, role, created_at, updated_at from users where user_id = :user_id limit 1";
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([':user_id' => $userId]);
+
     return $stmt->fetch();
   }
 
